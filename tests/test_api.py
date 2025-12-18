@@ -16,7 +16,10 @@ def client():
 def test_health(client):
     r = client.get('/api/v1/health')
     assert r.status_code == 200
-    assert r.json() == {'status': 'ok'}
+    data = r.json()
+    assert data['status'] == 'ok'
+    assert 'version' in data
+    assert 'timestamp' in data
 
 
 def test_items_crud(client):
