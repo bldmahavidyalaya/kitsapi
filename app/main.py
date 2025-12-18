@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlmodel import SQLModel
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -82,6 +83,17 @@ def create_app() -> FastAPI:
     static_path = os.path.join(os.path.dirname(__file__), "static")
     if os.path.exists(static_path):
         app.mount("/static", StaticFiles(directory=static_path), name="static")
+
+    # Serve index.html at root route
+    templates_path = os.path.join(os.path.dirname(__file__), "templates")
+    index_path = os.path.join(templates_path, "index.html")
+    
+    @app.get("/")
+    async def root():
+        """Serve the interactive API testing dashboard"""
+        if os.path.exists(index_path):
+            return FileResponse(index_path, media_type="text/html")
+        return {"message": "Kits API - Interactive Testing Dashboard at /"}
 
     return app
 
