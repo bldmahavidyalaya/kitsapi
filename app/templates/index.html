@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Kits API UI</title>
+    <link rel="stylesheet" href="/static/style.css">
+  </head>
+  <body>
+    <div class="container">
+      <h1>Kits API — Items</h1>
+      <div id="app">
+        <form id="createForm">
+          <input name="name" placeholder="Name" required />
+          <input name="price" placeholder="Price" required />
+          <input name="description" placeholder="Description" />
+          <button>Create</button>
+        </form>
+        <ul id="items"></ul>
+      </div>
+    </div>
+
+    <script>
+      const api = '/api/v1'
+
+      async function fetchItems(){
+        const res = await fetch(`${api}/items`)
+        const items = await res.json()
+        const list = document.getElementById('items')
+        list.innerHTML = ''
+        items.forEach(i => {
+          const li = document.createElement('li')
+          li.textContent = `${i.id} — ${i.name} — $${i.price}`
+          list.appendChild(li)
+        })
+      }
+
+      document.getElementById('createForm').addEventListener('submit', async (e)=>{
+        e.preventDefault()
+        const form = e.target
+        const data = {
+          name: form.name.value,
+          price: parseFloat(form.price.value || 0),
+          description: form.description.value || ''
+        }
+        await fetch(`${api}/items`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})
+        form.reset()
+        fetchItems()
+      })
+
+      fetchItems()
+    </script>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+:root{--bg:#f6f8fa;--card:#fff;--accent:#2563eb}
+body{font-family:Inter,system-ui,Arial;background:var(--bg);color:#0f172a;margin:0;padding:24px}
+.container{max-width:900px;margin:0 auto}
+h1{font-size:20px}
+#createForm{display:flex;gap:8px;margin-bottom:12px}
+#createForm input{padding:8px;border:1px solid #d1d5db;border-radius:6px}
+#createForm button{background:var(--accent);color:#fff;border:none;padding:8px 12px;border-radius:6px}
+#items{list-style:none;padding:0}
+#items li{background:var(--card);padding:12px;border-radius:8px;margin-bottom:8px;border:1px solid #e6edf3}
