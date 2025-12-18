@@ -7,9 +7,10 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import SQLModel
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 import os
 import logging
-from datetime import datetime
 
 from app.api.v1 import health, items, convert, convert_advanced, convert_advanced_extended, metadata
 from app.db.session import engine
@@ -22,6 +23,22 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage app startup and shutdown"""
+    # Startup
+    logger.info("=== Kits API Starting Up ===")
+    logger.info(f"Timestamp: {datetime.now(timezone.utc).isoformat()}")
+    SQLModel.metadata.create_all(engine)
+    logger.info("Database initialized successfully")
+    logger.info("=== Kits API Ready ===")
+    
+    yield
+    
+    # Shutdown
+    logger.info("=== Kits API Shutting Down ===")
+
+
 def create_app() -> FastAPI:
     """Create and configure FastAPI application"""
     app = FastAPI(
@@ -30,7 +47,8 @@ def create_app() -> FastAPI:
         description="Production-grade file conversion API with 86+ endpoints",
         docs_url="/docs",
         redoc_url="/redoc",
-        openapi_url="/openapi.json"
+        openapi_url="/openapi.json",
+        lifespan=lifespan
     )
 
     # Security middleware
@@ -64,20 +82,6 @@ def create_app() -> FastAPI:
     static_path = os.path.join(os.path.dirname(__file__), "static")
     if os.path.exists(static_path):
         app.mount("/static", StaticFiles(directory=static_path), name="static")
-
-    @app.on_event("startup")
-    def on_startup():
-        """Initialize database and log startup"""
-        logger.info("=== Kits API Starting Up ===")
-        logger.info(f"Timestamp: {datetime.utcnow().isoformat()}")
-        SQLModel.metadata.create_all(engine)
-        logger.info("Database initialized successfully")
-        logger.info("=== Kits API Ready ===")
-
-    @app.on_event("shutdown")
-    def on_shutdown():
-        """Log shutdown"""
-        logger.info("=== Kits API Shutting Down ===")
 
     return app
 

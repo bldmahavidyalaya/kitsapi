@@ -1,18 +1,20 @@
 """
 API metadata and statistics endpoints
 """
-from datetime import datetime
-from fastapi import APIRouter, Request
+from datetime import datetime, timezone
+from fastapi import APIRouter
 from typing import Dict, Any
+from threading import Lock
 
 router = APIRouter()
 
-# Store metrics
+# Thread-safe metrics with lock
+metrics_lock = Lock()
 metrics = {
     "total_requests": 0,
     "total_conversions": 0,
     "failed_conversions": 0,
-    "start_time": datetime.utcnow()
+    "start_time": datetime.now(timezone.utc)
 }
 
 
@@ -45,20 +47,21 @@ def api_metadata() -> Dict[str, Any]:
 @router.get("/stats", tags=["Metrics"])
 def api_stats() -> Dict[str, Any]:
     """Get API usage statistics"""
-    uptime = datetime.utcnow() - metrics["start_time"]
-    success_rate = 0
-    if metrics["total_conversions"] > 0:
-        success_rate = ((metrics["total_conversions"] - metrics["failed_conversions"]) 
-                       / metrics["total_conversions"] * 100)
-    
-    return {
-        "uptime_seconds": int(uptime.total_seconds()),
-        "total_requests": metrics["total_requests"],
-        "total_conversions": metrics["total_conversions"],
-        "failed_conversions": metrics["failed_conversions"],
-        "success_rate_percent": round(success_rate, 2),
-        "start_time": metrics["start_time"].isoformat()
-    }
+    with metrics_lock:
+        uptime = datetime.now(timezone.utc) - metrics["start_time"]
+        success_rate = 0
+        if metrics["total_conversions"] > 0:
+            success_rate = ((metrics["total_conversions"] - metrics["failed_conversions"]) 
+                           / metrics["total_conversions"] * 100)
+        
+        return {
+            "uptime_seconds": int(uptime.total_seconds()),
+            "total_requests": metrics["total_requests"],
+            "total_conversions": metrics["total_conversions"],
+            "failed_conversions": metrics["failed_conversions"],
+            "success_rate_percent": round(success_rate, 2),
+            "start_time": metrics["start_time"].isoformat()
+        }
 
 
 @router.get("/features", tags=["Metadata"])

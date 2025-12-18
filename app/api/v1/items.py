@@ -11,7 +11,7 @@ router = APIRouter()
 
 @router.post("/items", response_model=ItemRead)
 def create_item(payload: ItemCreate, session: Session = Depends(get_session)):
-    item = Item.from_orm(payload)
+    item = Item.model_validate(payload)
     session.add(item)
     session.commit()
     session.refresh(item)

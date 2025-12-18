@@ -3,9 +3,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 from typing import Optional
+import logging
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 import img2pdf
 import pikepdf
@@ -19,15 +20,49 @@ import zipfile
 from cryptography.fernet import Fernet
 import boto3
 
+from app.utils import (
+    conversion_lock,
+    cleanup_temp_file,
+    stream_file_in_chunks,
+    get_file_mime_type,
+)
+
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 def _save_upload(upload: UploadFile) -> Path:
+    """Save uploaded file to temporary location"""
     suffix = Path(upload.filename).suffix or ""
     fd, path = tempfile.mkstemp(suffix=suffix)
-    with open(path, "wb") as f:
-        f.write(upload.file.read())
-    return Path(path)
+    try:
+        with open(path, "wb") as f:
+            f.write(upload.file.read())
+        return Path(path)
+    except Exception as e:
+        logger.error(f"Error saving upload: {e}")
+        raise HTTPException(status_code=400, detail="Failed to save uploaded file")
+
+
+def _create_streaming_response(file_path: Path, filename: str) -> StreamingResponse:
+    """Create a streaming response for efficient file delivery"""
+    try:
+        mime_type = get_file_mime_type(file_path)
+        file_size = file_path.stat().st_size
+        
+        return StreamingResponse(
+            stream_file_in_chunks(file_path),
+            media_type=mime_type,
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Length": str(file_size),
+                "Cache-Control": "no-cache",
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error creating streaming response: {e}")
+        cleanup_temp_file(file_path)
+        raise HTTPException(status_code=500, detail="Failed to prepare file for download")
 
 
 def _run_libreoffice_convert(src: Path, out_dir: Path, to_ext: str) -> Optional[Path]:

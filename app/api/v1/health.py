@@ -1,11 +1,16 @@
 """
 Health check and diagnostics endpoints
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter
 import shutil
 
 router = APIRouter()
+
+
+def _get_utc_now() -> str:
+    """Get current UTC timestamp as ISO string"""
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _check_database():
@@ -35,31 +40,31 @@ def _check_storage():
         return {"status": "error", "message": str(e)}
 
 
-@router.get("/health", summary="Health check")
+@router.get("/health", summary="Health check", response_model=dict)
 def health_check():
-    """Basic health check"""
+    """Basic health check endpoint"""
     return {
         "status": "ok",
         "version": "1.0.0",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": _get_utc_now()
     }
 
 
-@router.get("/health/detailed", summary="Detailed health check")
+@router.get("/health/detailed", summary="Detailed health check", response_model=dict)
 def health_detailed():
     """Detailed health check with system diagnostics"""
     return {
         "status": "ok",
         "version": "1.0.0",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": _get_utc_now(),
         "database": _check_database(),
         "storage": _check_storage()
     }
 
 
-@router.get("/health/ready", summary="Readiness probe")
+@router.get("/health/ready", summary="Readiness probe", response_model=dict)
 def readiness_check():
-    """Readiness probe for orchestration"""
+    """Readiness probe for Kubernetes/orchestration"""
     db_check = _check_database()
     storage_check = _check_storage()
     
@@ -77,7 +82,7 @@ def readiness_check():
     }
 
 
-@router.get("/health/live", summary="Liveness probe")
+@router.get("/health/live", summary="Liveness probe", response_model=dict)
 def liveness_check():
-    """Liveness probe for orchestration"""
-    return {"alive": True, "timestamp": datetime.utcnow().isoformat()}
+    """Liveness probe for Kubernetes/orchestration"""
+    return {"alive": True, "timestamp": _get_utc_now()}
